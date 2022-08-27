@@ -1,13 +1,11 @@
 package message
 
-
 import (
-"chatSystemGoAPIs/models"
+	"chatSystemGoAPIs/models"
 	mRepo "chatSystemGoAPIs/repositories"
-"database/sql"
-"fmt"
-_ "github.com/go-sql-driver/mysql"
-	"time"
+	"database/sql"
+	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 
@@ -24,10 +22,6 @@ type mysqlMessageRepo struct {
 func (m mysqlMessageRepo) Insert(message models.Message) bool {
 	db := m.Conn
 	defer db.Close()
-
-	today := time.Now()
-	message.CreatedAt = today.Format("2006-01-02 15:04:05")
-	message.UpdatedAt = today.Format("2006-01-02 15:04:05")
 
 	insert,err := db.Prepare("insert into messages(number, chat_id, message, created_at, updated_at) values(?,?,?,?,?)")
 	if err != nil{

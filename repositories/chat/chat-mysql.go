@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"time"
 )
 
 
@@ -23,11 +22,6 @@ type mysqlChatRepo struct {
 func (m mysqlChatRepo) Insert(chat models.Chat) bool {
 	db := m.Conn
 	defer db.Close()
-
-
-	today := time.Now()
-	chat.CreatedAt = today.Format("2006-01-02 15:04:05")
-	chat.UpdatedAt = today.Format("2006-01-02 15:04:05")
 
 	insert,err := db.Prepare("insert into chats(number, application_id, chat_name, created_at, updated_at) values(?,?,?,?,?)")
 	if err != nil{

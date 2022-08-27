@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 func elasticClient()(client *elasticsearch.Client){
@@ -57,41 +58,51 @@ func CreateChat(w http.ResponseWriter ,r * http.Request)  {
 	vars := mux.Vars(r)
 	token := vars["token"]
 
-
-	conn := mysqlConnection()
-	chatRepo := chat.NewSQLChatRepo(conn)
-
 	var tmpChat models.Chat
 
 	json.NewDecoder(r.Body).Decode(&tmpChat)
+
 	if tmpChat.ChatName == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json,_ := json.Marshal(tmpChat)
-		w.Write(json)
-	}
+		responseJson,_ := json.Marshal(tmpChat)
+		w.Write(responseJson)
+	}else {
+		conn := mysqlConnection()
+		chatRepo := chat.NewSQLChatRepo(conn)
 
-	appId := chatRepo.ValidApplication(token)
+		appId := chatRepo.ValidApplication(token)
 
-	if appId != -1 {
-		tmpChat.ApplicationId = appId
-		tmpChat.Number = 6 // to be concurent calculate
-		inserted := chatRepo.Insert(tmpChat)
-		if inserted {
-			w.WriteHeader(http.StatusOK)
-			json,_ := json.Marshal(tmpChat)
-			w.Write(json)
+		if appId != -1 {
+			tmpChat.ApplicationId = appId
+			today := time.Now()
+			tmpChat.CreatedAt = today.Format("2006-01-02 15:04:05")
+			tmpChat.UpdatedAt = today.Format("2006-01-02 15:04:05")
+			tmpChat.Number = 6 // to be concurent calculate
+
+			rabbitMQJson,_ := json.Marshal(tmpChat)
+			if rabbitMQ.SendMessage(string(rabbitMQJson), os.Getenv("rabbitMQChatsQueue")){
+				w.WriteHeader(http.StatusOK)
+				responseJson,_ := json.Marshal(tmpChat)
+				w.Write(responseJson)
+			}else{
+
+			}
+			//inserted := chatRepo.Insert(tmpChat)
+			//if inserted {
+			//	w.WriteHeader(http.StatusOK)
+			//	json,_ := json.Marshal(tmpChat)
+			//	w.Write(json)
+			//}else {
+			//	w.WriteHeader(http.StatusBadRequest)
+			//	json,_ := json.Marshal(tmpChat)
+			//	w.Write(json)
+			//}
 		}else {
 			w.WriteHeader(http.StatusBadRequest)
-			json,_ := json.Marshal(tmpChat)
-			w.Write(json)
+			responseJson,_ := json.Marshal(tmpChat)
+			w.Write(responseJson)
 		}
-	}else {
-		w.WriteHeader(http.StatusBadRequest)
-		json,_ := json.Marshal(tmpChat)
-		w.Write(json)
 	}
-
-
 }
 
 func CreateMessage(w http.ResponseWriter ,r * http.Request)  {
@@ -104,52 +115,58 @@ func CreateMessage(w http.ResponseWriter ,r * http.Request)  {
 	chatNumber := 0
 	chatNumber, _ = strconv.Atoi(chatNumberStr)
 
-	mysqlConn := mysqlConnection()
-	mysqlMessageRepo := message.NewSQLMessageRepo(mysqlConn)
-
 	var tmpMessage models.Message
 
 	json.NewDecoder(r.Body).Decode(&tmpMessage)
 
 	tmpMessage.ChatNumber = chatNumber
 	tmpMessage.Token = token
-	tmpMessage.Number = 5 // to be concurent calculate
-
-	rabbitMQ.SendMessage("hey")
-
-	elasticClient := elasticClient()
-	elasticMessageRepo := message.NewElasticMessageRepo(elasticClient)
-
-	elasticMessageRepo.Insert(tmpMessage)
-
 
 	if tmpMessage.Message == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json,_ := json.Marshal(tmpMessage)
-		w.Write(json)
-	}
-
-	chatId := mysqlMessageRepo.ValidChat(token, chatNumber)
-
-	if chatId != -1 {
-		tmpMessage.ChatId = chatId
-		tmpMessage.Number = 5 // to be concurent calculate
-		inserted := mysqlMessageRepo.Insert(tmpMessage)
-		if inserted {
-			elasticMessageRepo.Insert(tmpMessage)
-			w.WriteHeader(http.StatusOK)
-			json,_ := json.Marshal(tmpMessage)
-			w.Write(json)
-		}else {
-			w.WriteHeader(http.StatusBadRequest)
-			json,_ := json.Marshal(tmpMessage)
-			w.Write(json)
-		}
+		responseJson,_ := json.Marshal(tmpMessage)
+		w.Write(responseJson)
 	}else{
-		w.WriteHeader(http.StatusBadRequest)
-		json,_ := json.Marshal(tmpMessage)
-		w.Write(json)
+		mysqlConn := mysqlConnection()
+		mysqlMessageRepo := message.NewSQLMessageRepo(mysqlConn)
+
+		chatId := mysqlMessageRepo.ValidChat(token, chatNumber)
+
+		if chatId != -1 {
+			tmpMessage.ChatId = chatId
+			today := time.Now()
+			tmpMessage.CreatedAt = today.Format("2006-01-02 15:04:05")
+			tmpMessage.UpdatedAt = today.Format("2006-01-02 15:04:05")
+			tmpMessage.Number = 5 // to be concurent calculate
+
+			rabbitMQJson,_ := json.Marshal(tmpMessage)
+			if rabbitMQ.SendMessage(string(rabbitMQJson), os.Getenv("rabbitMQMessagesQueue")){
+				w.WriteHeader(http.StatusOK)
+				responseJson,_ := json.Marshal(tmpMessage)
+				w.Write(responseJson)
+			}else{
+				w.WriteHeader(http.StatusBadRequest)
+				responseJson,_ := json.Marshal(tmpMessage)
+				w.Write(responseJson)
+			}
+
+			//inserted := mysqlMessageRepo.Insert(tmpMessage)
+			//if inserted {
+			//	elasticClient := elasticClient()
+			//	elasticMessageRepo := message.NewElasticMessageRepo(elasticClient)
+			//	elasticMessageRepo.Insert(tmpMessage)
+			//	w.WriteHeader(http.StatusOK)
+			//	json,_ := json.Marshal(tmpMessage)
+			//	w.Write(json)
+			//}else {
+			//	w.WriteHeader(http.StatusBadRequest)
+			//	json,_ := json.Marshal(tmpMessage)
+			//	w.Write(json)
+			//}
+		}else{
+			w.WriteHeader(http.StatusBadRequest)
+			responseJson,_ := json.Marshal(tmpMessage)
+			w.Write(responseJson)
+		}
 	}
-
-
 }

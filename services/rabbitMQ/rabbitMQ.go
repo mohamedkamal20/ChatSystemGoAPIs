@@ -7,16 +7,7 @@ import (
 )
 
 
-//func jsonStruct(message models.Message) string {
-//	// Marshal the struct to JSON and check for errors
-//	b, err := json.Marshal(message)
-//	if err != nil {
-//		return ""
-//	}
-//	return string(b)
-//}
-
-func SendMessage(message string)  bool{
+func SendMessage(message string, queue string)  bool{
 	conn, err := amqp.Dial(os.Getenv("rabbitMQHost"))
 	if err != nil{
 		return false
@@ -31,7 +22,7 @@ func SendMessage(message string)  bool{
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		os.Getenv("rabbitMQQueue"), // name
+		queue, // name
 		false,  				    // durable
 		false,   				// delete when unused
 		false,   				// exclusive
@@ -58,7 +49,7 @@ func SendMessage(message string)  bool{
 	return true
 }
 
-func ReceiveMessage() {
+func ReceiveMessage(queue string, messageType string) {
 	conn, _ := amqp.Dial(os.Getenv("rabbitMQHost"))
 	defer conn.Close()
 
@@ -66,7 +57,7 @@ func ReceiveMessage() {
 	defer ch.Close()
 
 	q, _ := ch.QueueDeclare(
-		os.Getenv("rabbitMQQueue"), // name
+		queue, // name
 		false,   // durable
 		false,   // delete when unused
 		false,   // exclusive
@@ -88,7 +79,11 @@ func ReceiveMessage() {
 
 	go func() {
 		for d := range msgs {
-			fmt.Printf("Received a message: %s \n", d.Body)
+			if messageType == "chat"{
+				fmt.Printf("Received a chat: %s \n", d.Body)
+			}else{
+				fmt.Printf("Received a message: %s \n", d.Body)
+			}
 		}
 	}()
 
