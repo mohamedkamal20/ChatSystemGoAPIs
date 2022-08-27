@@ -26,8 +26,8 @@ func (m mysqlChatRepo) Insert(chat models.Chat) bool {
 
 
 	today := time.Now()
-	chat.Created_at = today.Format("2006-01-02 15:04:05")
-	chat.Updated_at = today.Format("2006-01-02 15:04:05")
+	chat.CreatedAt = today.Format("2006-01-02 15:04:05")
+	chat.UpdatedAt = today.Format("2006-01-02 15:04:05")
 
 	insert,err := db.Prepare("insert into chats(number, application_id, chat_name, created_at, updated_at) values(?,?,?,?,?)")
 	if err != nil{
@@ -35,7 +35,7 @@ func (m mysqlChatRepo) Insert(chat models.Chat) bool {
 		return false
 	}
 
-	insert.Exec(chat.Number,chat.Application_id,chat.Chat_name, chat.Created_at, chat.Updated_at)
+	insert.Exec(chat.Number,chat.ApplicationId,chat.ChatName, chat.CreatedAt, chat.UpdatedAt)
 
 	defer insert.Close()
 

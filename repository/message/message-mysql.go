@@ -26,8 +26,8 @@ func (m mysqlMessageRepo) Insert(message models.Message) bool {
 	defer db.Close()
 
 	today := time.Now()
-	message.Created_at = today.Format("2006-01-02 15:04:05")
-	message.Updated_at = today.Format("2006-01-02 15:04:05")
+	message.CreatedAt = today.Format("2006-01-02 15:04:05")
+	message.UpdatedAt = today.Format("2006-01-02 15:04:05")
 
 	insert,err := db.Prepare("insert into messages(number, chat_id, message, created_at, updated_at) values(?,?,?,?,?)")
 	if err != nil{
@@ -35,7 +35,7 @@ func (m mysqlMessageRepo) Insert(message models.Message) bool {
 		return false
 	}
 
-	insert.Exec(message.Number,message.Chat_id,message.Message, message.Created_at, message.Updated_at)
+	insert.Exec(message.Number,message.ChatId,message.Message, message.CreatedAt, message.UpdatedAt)
 
 	defer insert.Close()
 

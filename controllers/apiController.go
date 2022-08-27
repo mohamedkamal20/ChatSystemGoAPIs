@@ -16,18 +16,25 @@ import (
 )
 
 func elasticClient()(client *elasticsearch.Client){
-	esClient, err := elasticsearch.NewDefaultClient()
+	cfg := elasticsearch.Config{
+		Addresses: []string{
+			"http://localhost:9200",
+		},
+		Username: "",
+		Password: "",
+	}
+	client, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("Error creating the client: %s", err)
+		return nil
 	}
 
-	res, err := esClient.Info()
+	_, err = client.Info()
 	if err != nil {
 		log.Fatalf("Error getting response: %s", err)
+		return nil
 	}
-	defer res.Body.Close()
-
-	return esClient
+	return client
 }
 
 func mysqlConnection()(db * sql.DB){
@@ -55,7 +62,7 @@ func CreateChat(w http.ResponseWriter ,r * http.Request)  {
 	var tmpChat models.Chat
 
 	json.NewDecoder(r.Body).Decode(&tmpChat)
-	if tmpChat.Chat_name == "" {
+	if tmpChat.ChatName == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json,_ := json.Marshal(tmpChat)
 		w.Write(json)
@@ -64,7 +71,7 @@ func CreateChat(w http.ResponseWriter ,r * http.Request)  {
 	appId := chatRepo.ValidApplication(token)
 
 	if appId != -1 {
-		tmpChat.Application_id = appId
+		tmpChat.ApplicationId = appId
 		tmpChat.Number = 6 // to be concurent calculate
 		inserted := chatRepo.Insert(tmpChat)
 		if inserted {
@@ -100,10 +107,17 @@ func CreateMessage(w http.ResponseWriter ,r * http.Request)  {
 
 	var tmpMessage models.Message
 
-	//elasticClient := elasticClient()
-	//elasticMessageRepo := message.NewElasticMessageRepo(elasticClient)
-
 	json.NewDecoder(r.Body).Decode(&tmpMessage)
+
+	tmpMessage.ChatNumber = chatNumber
+	tmpMessage.Token = token
+	tmpMessage.Number = 5 // to be concurent calculate
+
+	elasticClient := elasticClient()
+	elasticMessageRepo := message.NewElasticMessageRepo(elasticClient)
+
+	elasticMessageRepo.Insert(tmpMessage)
+
 
 	if tmpMessage.Message == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -114,11 +128,11 @@ func CreateMessage(w http.ResponseWriter ,r * http.Request)  {
 	chatId := mysqlMessageRepo.ValidChat(token, chatNumber)
 
 	if chatId != -1 {
-		tmpMessage.Chat_id = chatId
+		tmpMessage.ChatId = chatId
 		tmpMessage.Number = 5 // to be concurent calculate
 		inserted := mysqlMessageRepo.Insert(tmpMessage)
 		if inserted {
-			//elasticMessageRepo.Insert(tmpMessage)
+			elasticMessageRepo.Insert(tmpMessage)
 			w.WriteHeader(http.StatusOK)
 			json,_ := json.Marshal(tmpMessage)
 			w.Write(json)
