@@ -5,40 +5,17 @@ import (
 	"chatSystemGoAPIs/repositories/chat"
 	"chatSystemGoAPIs/repositories/message"
 	"chatSystemGoAPIs/services/rabbitMQ"
+	"chatSystemGoAPIs/services/redis"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/elastic/go-elasticsearch/v7"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 )
-
-func elasticClient()(client *elasticsearch.Client){
-	cfg := elasticsearch.Config{
-		Addresses: []string{
-			os.Getenv("elasticSearchHost"),
-		},
-		Username: "",
-		Password: "",
-	}
-	client, err := elasticsearch.NewClient(cfg)
-	if err != nil {
-		log.Fatalf("Error creating the client: %s", err)
-		return nil
-	}
-
-	_, err = client.Info()
-	if err != nil {
-		log.Fatalf("Error getting response: %s", err)
-		return nil
-	}
-	return client
-}
 
 func mysqlConnection()(db * sql.DB){
 
@@ -64,7 +41,7 @@ func CreateChat(w http.ResponseWriter ,r * http.Request)  {
 
 	if tmpChat.ChatName == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		responseJson,_ := json.Marshal(tmpChat)
+		responseJson,_ := json.Marshal(tmpChat.ChatErrorResponse("chat_name can not be empty"))
 		w.Write(responseJson)
 	}else {
 		conn := mysqlConnection()
@@ -77,29 +54,28 @@ func CreateChat(w http.ResponseWriter ,r * http.Request)  {
 			today := time.Now()
 			tmpChat.CreatedAt = today.Format("2006-01-02 15:04:05")
 			tmpChat.UpdatedAt = today.Format("2006-01-02 15:04:05")
-			tmpChat.Number = 6 // to be concurent calculate
-
-			rabbitMQJson,_ := json.Marshal(tmpChat)
-			if rabbitMQ.SendMessage(string(rabbitMQJson), os.Getenv("rabbitMQChatsQueue")){
-				w.WriteHeader(http.StatusOK)
-				responseJson,_ := json.Marshal(tmpChat)
-				w.Write(responseJson)
+			chatNumber := redis.GetChatNumber(token)
+			if chatNumber != -1{
+				tmpChat.Number = chatNumber
+				rabbitMQJson,_ := json.Marshal(tmpChat)
+				if rabbitMQ.SendMessage(string(rabbitMQJson), os.Getenv("rabbitMQChatsQueue")){
+					w.WriteHeader(http.StatusOK)
+					responseJson,_ := json.Marshal(tmpChat.ChatResponse())
+					w.Write(responseJson)
+				}else{
+					w.WriteHeader(http.StatusBadRequest)
+					responseJson,_ := json.Marshal(tmpChat.ChatErrorResponse("Something went wrong please try again later"))
+					w.Write(responseJson)
+				}
 			}else{
-
+				w.WriteHeader(http.StatusBadRequest)
+				responseJson,_ := json.Marshal(tmpChat.ChatErrorResponse("Something went wrong please try again later"))
+				w.Write(responseJson)
 			}
-			//inserted := chatRepo.Insert(tmpChat)
-			//if inserted {
-			//	w.WriteHeader(http.StatusOK)
-			//	json,_ := json.Marshal(tmpChat)
-			//	w.Write(json)
-			//}else {
-			//	w.WriteHeader(http.StatusBadRequest)
-			//	json,_ := json.Marshal(tmpChat)
-			//	w.Write(json)
-			//}
+
 		}else {
 			w.WriteHeader(http.StatusBadRequest)
-			responseJson,_ := json.Marshal(tmpChat)
+			responseJson,_ := json.Marshal(tmpChat.ChatErrorResponse("Application token does not exist"))
 			w.Write(responseJson)
 		}
 	}
@@ -124,7 +100,7 @@ func CreateMessage(w http.ResponseWriter ,r * http.Request)  {
 
 	if tmpMessage.Message == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		responseJson,_ := json.Marshal(tmpMessage)
+		responseJson,_ := json.Marshal(tmpMessage.MessageErrorResponse("Message can not be empty"))
 		w.Write(responseJson)
 	}else{
 		mysqlConn := mysqlConnection()
@@ -137,35 +113,28 @@ func CreateMessage(w http.ResponseWriter ,r * http.Request)  {
 			today := time.Now()
 			tmpMessage.CreatedAt = today.Format("2006-01-02 15:04:05")
 			tmpMessage.UpdatedAt = today.Format("2006-01-02 15:04:05")
-			tmpMessage.Number = 5 // to be concurent calculate
+			messageNumber := redis.GetMessageNumber(token, chatNumber)
+			if messageNumber != -1{
+				tmpMessage.Number = messageNumber
 
-			rabbitMQJson,_ := json.Marshal(tmpMessage)
-			if rabbitMQ.SendMessage(string(rabbitMQJson), os.Getenv("rabbitMQMessagesQueue")){
-				w.WriteHeader(http.StatusOK)
-				responseJson,_ := json.Marshal(tmpMessage)
-				w.Write(responseJson)
+				rabbitMQJson,_ := json.Marshal(tmpMessage)
+				if rabbitMQ.SendMessage(string(rabbitMQJson), os.Getenv("rabbitMQMessagesQueue")){
+					w.WriteHeader(http.StatusOK)
+					responseJson,_ := json.Marshal(tmpMessage.MessageResponse())
+					w.Write(responseJson)
+				}else{
+					w.WriteHeader(http.StatusBadRequest)
+					responseJson,_ := json.Marshal(tmpMessage.MessageErrorResponse("Something went wrong please try again later"))
+					w.Write(responseJson)
+				}
 			}else{
 				w.WriteHeader(http.StatusBadRequest)
-				responseJson,_ := json.Marshal(tmpMessage)
+				responseJson,_ := json.Marshal(tmpMessage.MessageErrorResponse("Something went wrong please try again later"))
 				w.Write(responseJson)
 			}
-
-			//inserted := mysqlMessageRepo.Insert(tmpMessage)
-			//if inserted {
-			//	elasticClient := elasticClient()
-			//	elasticMessageRepo := message.NewElasticMessageRepo(elasticClient)
-			//	elasticMessageRepo.Insert(tmpMessage)
-			//	w.WriteHeader(http.StatusOK)
-			//	json,_ := json.Marshal(tmpMessage)
-			//	w.Write(json)
-			//}else {
-			//	w.WriteHeader(http.StatusBadRequest)
-			//	json,_ := json.Marshal(tmpMessage)
-			//	w.Write(json)
-			//}
 		}else{
 			w.WriteHeader(http.StatusBadRequest)
-			responseJson,_ := json.Marshal(tmpMessage)
+			responseJson,_ := json.Marshal(tmpMessage.MessageErrorResponse("Application token or chat number does not exist"))
 			w.Write(responseJson)
 		}
 	}

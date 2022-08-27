@@ -49,6 +49,7 @@ func SendMessage(message string, queue string)  bool{
 	return true
 }
 
+// ReceiveMessage deprecated on rails application
 func ReceiveMessage(queue string, messageType string) {
 	conn, _ := amqp.Dial(os.Getenv("rabbitMQHost"))
 	defer conn.Close()

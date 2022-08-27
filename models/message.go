@@ -10,3 +10,15 @@ type Message struct {
 	UpdatedAt string `json:"updated_at,omitempty" bson:"updated_at,omitempty"`
 }
 
+func (t Message) MessageResponse() map[string]interface{} {
+	return map[string]interface{}{
+		"message":      t.Message,
+		"number":    t.Number,
+	}
+}
+
+func (t Message) MessageErrorResponse(error string) map[string]interface{} {
+	return map[string]interface{}{
+		"errorMessage":  error,
+	}
+}
