@@ -2,7 +2,7 @@ package message
 
 import (
 	"chatSystemGoAPIs/models"
-	mRepo "chatSystemGoAPIs/repository"
+	mRepo "chatSystemGoAPIs/repositories"
 	"encoding/json"
 	"github.com/elastic/go-elasticsearch/v7"
 	"log"

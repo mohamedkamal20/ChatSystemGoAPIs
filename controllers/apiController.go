@@ -2,8 +2,9 @@ package controllers
 
 import (
 	"chatSystemGoAPIs/models"
-	"chatSystemGoAPIs/repository/chat"
-	"chatSystemGoAPIs/repository/message"
+	"chatSystemGoAPIs/repositories/chat"
+	"chatSystemGoAPIs/repositories/message"
+	"chatSystemGoAPIs/services/rabbitMQ"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -12,13 +13,14 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 )
 
 func elasticClient()(client *elasticsearch.Client){
 	cfg := elasticsearch.Config{
 		Addresses: []string{
-			"http://localhost:9200",
+			os.Getenv("elasticSearchHost"),
 		},
 		Username: "",
 		Password: "",
@@ -39,7 +41,7 @@ func elasticClient()(client *elasticsearch.Client){
 
 func mysqlConnection()(db * sql.DB){
 
-	db,err := sql.Open("mysql","root:root@tcp(127.0.0.1:3306)/ChatSystem_development")
+	db,err := sql.Open("mysql",os.Getenv("mySqlDataStoreName"))
 
 	if err != nil {
 		fmt.Println(err)
@@ -112,6 +114,8 @@ func CreateMessage(w http.ResponseWriter ,r * http.Request)  {
 	tmpMessage.ChatNumber = chatNumber
 	tmpMessage.Token = token
 	tmpMessage.Number = 5 // to be concurent calculate
+
+	rabbitMQ.SendMessage("hey")
 
 	elasticClient := elasticClient()
 	elasticMessageRepo := message.NewElasticMessageRepo(elasticClient)

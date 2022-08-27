@@ -2,7 +2,7 @@ package chat
 
 import (
 	"chatSystemGoAPIs/models"
-	cRepo "chatSystemGoAPIs/repository"
+	cRepo "chatSystemGoAPIs/repositories"
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"

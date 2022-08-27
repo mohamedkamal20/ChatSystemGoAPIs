@@ -3,7 +3,7 @@ package message
 
 import (
 "chatSystemGoAPIs/models"
-mRepo "chatSystemGoAPIs/repository"
+	mRepo "chatSystemGoAPIs/repositories"
 "database/sql"
 "fmt"
 _ "github.com/go-sql-driver/mysql"
