@@ -62,6 +62,35 @@ func (m mysqlChatRepo) ValidApplication(token string) int {
 	return appId
 }
 
+func (m mysqlChatRepo) GetApplicationChatsCount(appId int) int{
+	db := m.Conn
+	defer db.Close()
+
+	count := 0
+	get,err := db.Query("select COUNT(*) as count from chats as c where c.application_id = ?",appId)
+	if err != nil{
+		fmt.Println(err)
+		count = -1
+		return count
+	}
+
+	for get.Next(){
+		var c int
+		err := get.Scan(&c)
+		if err != nil{
+			fmt.Println(err)
+			count = -1
+			return count
+		}
+		count = c
+	}
+
+	defer get.Close()
+
+	return count
+}
+
+
 
 
 

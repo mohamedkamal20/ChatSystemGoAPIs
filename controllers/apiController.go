@@ -54,7 +54,7 @@ func CreateChat(w http.ResponseWriter ,r * http.Request)  {
 			today := time.Now()
 			tmpChat.CreatedAt = today.Format("2006-01-02 15:04:05")
 			tmpChat.UpdatedAt = today.Format("2006-01-02 15:04:05")
-			chatNumber := redis.GetChatNumber(token)
+			chatNumber := redis.GetChatNumber(token, appId)
 			if chatNumber != -1{
 				tmpChat.Number = chatNumber
 				rabbitMQJson,_ := json.Marshal(tmpChat)
@@ -113,7 +113,7 @@ func CreateMessage(w http.ResponseWriter ,r * http.Request)  {
 			today := time.Now()
 			tmpMessage.CreatedAt = today.Format("2006-01-02 15:04:05")
 			tmpMessage.UpdatedAt = today.Format("2006-01-02 15:04:05")
-			messageNumber := redis.GetMessageNumber(token, chatNumber)
+			messageNumber := redis.GetMessageNumber(token, chatNumber, chatId)
 			if messageNumber != -1{
 				tmpMessage.Number = messageNumber
 

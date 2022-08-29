@@ -13,6 +13,7 @@ func setEnvVariables()  {
 	os.Setenv("rabbitMQChatsQueue", "chats_development")
 	os.Setenv("rabbitMQMessagesQueue", "messages_development")
 	os.Setenv("mySqlDataStoreName", "root:root@tcp(127.0.0.1:3306)/ChatSystem_development")
+	os.Setenv("redisHost", "localhost:6379")
 	os.Setenv("redisDB", "1")
 }
 

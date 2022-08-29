@@ -62,5 +62,33 @@ func (m mysqlMessageRepo) ValidChat(token string, chatNumber int) int {
 	return chatId
 }
 
+func (m mysqlMessageRepo) GetChatMessagesCount(chatId int) int{
+	db := m.Conn
+	defer db.Close()
+
+	count := 0
+	get,err := db.Query("select COUNT(*) as count from messages as m  where m.chat_id = ?", chatId)
+	if err != nil{
+		fmt.Println(err)
+		count = -1
+		return count
+	}
+
+	for get.Next(){
+		var c int
+		err := get.Scan(&c)
+		if err != nil{
+			fmt.Println(err)
+			count = -1
+			return count
+		}
+		count = c
+	}
+
+	defer get.Close()
+
+	return count
+}
+
 
 
